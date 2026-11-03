@@ -1,3 +1,8 @@
+
+//
+// FASE 1: MODELAGEM DOS DADOS - CLASSE PRODUTO
+//
+
 class Produto {
 
     // Atributos privados
@@ -6,17 +11,20 @@ class Produto {
 
     constructor(nome, preco, quantidade) {
 
-        // Validação e sanitização do nome
-        if (typeof nome !== "string" || nome.trim() === "") {
+        // Validação do nome
+        if (!nome || nome.trim() === "") {
             throw new Error("O nome do produto não pode ficar em branco.");
         }
 
         this.nome = nome.trim();
 
-        // Define preço e quantidade usando os setters
+        // Utiliza os setters para validar os valores
         this.preco = preco;
         this.quantidade = quantidade;
     }
+
+
+    // GETTER E SETTER DO PREÇO
 
     get preco() {
         return this.#preco;
@@ -27,11 +35,14 @@ class Produto {
         novoPreco = Number(novoPreco);
 
         if (!Number.isFinite(novoPreco) || novoPreco <= 0) {
-            throw new Error("O preço deve ser um número maior que zero.");
+            throw new Error("O preço deve ser maior que zero.");
         }
 
         this.#preco = novoPreco;
     }
+
+
+    // GETTER E SETTER DA QUANTIDADE
 
     get quantidade() {
         return this.#quantidade;
@@ -41,51 +52,61 @@ class Produto {
 
         novaQuantidade = Number(novaQuantidade);
 
-        if (
-            !Number.isSafeInteger(novaQuantidade) ||
-            novaQuantidade <= 0
-        ) {
-            throw new Error(
-                "A quantidade deve ser um número inteiro maior que zero."
-            );
+        if (!Number.isInteger(novaQuantidade) || novaQuantidade <= 0) {
+            throw new Error("A quantidade deve ser um número inteiro maior que zero.");
         }
 
         this.#quantidade = novaQuantidade;
     }
+
+
+    // CALCULAR SUBTOTAL
 
     calcularSubtotal() {
         return this.preco * this.quantidade;
     }
 }
 
+
+//
+// FASE 2: GERENCIAMENTO DE ESTADO
+//
+
 const listaDeProdutos = [];
+
 const CHAVE_STORAGE = "sistema_estoque_produtos";
+
+// null = modo cadastro
+// número = modo edição
 let indiceEdicao = null;
-const formProduto = document.getElementById("produto-form");
-const nomeInput = document.getElementById("nome");
-const precoInput = document.getElementById("preco");
-const quantidadeInput = document.getElementById("quantidade");
-const btnSalvar = document.getElementById("btn-salvar");
-const btnCancelarEdicao = document.getElementById("btn-cancelar-edicao");
-const btnLimparTudo = document.getElementById("limpar-tabela");
-const totalEstoqueEl = document.getElementById("total-estoque");
-const mensagemVazia = document.getElementById("mensagem-vazia");
+
+
+//
+// FASE 3: SALVAR NO LOCALSTORAGE
+//
 
 function salvarNoLocalStorage() {
 
-    // Transforma os produtos em objetos simples.
-    // Isso permite salvar também os atributos privados.
-    const dadosParaSalvar = listaDeProdutos.map(produto => ({
-        nome: produto.nome,
-        preco: produto.preco,
-        quantidade: produto.quantidade
-    }));
+    const dadosParaSalvar = listaDeProdutos.map(produto => {
+
+        return {
+            nome: produto.nome,
+            preco: produto.preco,
+            quantidade: produto.quantidade
+        };
+
+    });
 
     localStorage.setItem(
         CHAVE_STORAGE,
         JSON.stringify(dadosParaSalvar)
     );
 }
+
+
+//
+// FASE 4: CARREGAR DO LOCALSTORAGE
+//
 
 function carregarDoLocalStorage() {
 
@@ -99,13 +120,8 @@ function carregarDoLocalStorage() {
 
         const produtosSalvos = JSON.parse(dadosSalvos);
 
-        if (!Array.isArray(produtosSalvos)) {
-            throw new Error("Os dados salvos não estão no formato esperado.");
-        }
-
         produtosSalvos.forEach(produto => {
 
-            // Recria cada produto e valida os dados carregados
             const novoProduto = new Produto(
                 produto.nome,
                 produto.preco,
@@ -113,199 +129,232 @@ function carregarDoLocalStorage() {
             );
 
             listaDeProdutos.push(novoProduto);
+
         });
 
     } catch (erro) {
 
         console.error("Erro ao carregar os produtos:", erro);
 
-        listaDeProdutos.length = 0;
-
-        alert(
-            "Não foi possível carregar os produtos salvos. " +
-            "Verifique o armazenamento do navegador."
-        );
+        alert("Não foi possível carregar os produtos salvos.");
     }
 }
 
+
+//
+// FASE 5: PEGAR ELEMENTOS DO HTML
+//
+
+const formProduto = document.getElementById("produto-form");
+
+const btnLimparTudo = document.getElementById("limpar-tabela");
+
+const totalEstoqueEl = document.getElementById("total-estoque");
+
+const nomeEl = document.getElementById("nome");
+
+const precoEl = document.getElementById("preco");
+
+const quantidadeEl = document.getElementById("quantidade");
+
+const btnPrincipal = document.querySelector(".btn-primary");
+
+
+// Guarda o texto original do botão
+const textoBotaoOriginal = btnPrincipal.textContent.trim();
+
+
+//
+// FASE 6: PREPARAR EDIÇÃO
+//
+
 function prepararEdicao(index) {
 
-    // Busca o produto selecionado
     const produto = listaDeProdutos[index];
 
-    // Se não existir, interrompe a função
     if (!produto) {
         alert("Produto não encontrado.");
         return;
     }
-
-    // Guarda o índice do produto que será alterado
+    nomeEl.value = produto.nome;
+    precoEl.value = produto.preco;
+    quantidadeEl.value = produto.quantidade;
+    // Ativa o modo edição
     indiceEdicao = index;
-
-    // Preenche o formulário com os dados existentes
-    nomeInput.value = produto.nome;
-    precoInput.value = produto.preco;
-    quantidadeInput.value = produto.quantidade;
-
     // Altera o texto do botão
-    btnSalvar.textContent = "Salvar alterações";
+    btnPrincipal.textContent = "Salvar Alterações";
 
-    // Exibe o botão de cancelar
-    btnCancelarEdicao.hidden = false;
-
-    // Leva a tela até o formulário
+    // Leva o formulário para a tela
     formProduto.scrollIntoView({
         behavior: "smooth",
-        block: "start"
+        block: "center"
     });
 
-    nomeInput.focus();
+    nomeEl.focus();
 }
 
-function restaurarModoCadastro() {
 
-    // Sai do modo de edição
+//
+// FASE 7: CANCELAR EDIÇÃO
+//
+
+function cancelarEdicao() {
+
+    // Volta para o modo cadastro
     indiceEdicao = null;
 
     // Limpa os campos
     formProduto.reset();
 
-    // Restaura o texto original do botão
-    btnSalvar.textContent = "Adicionar ao carrinho";
-
-    // Esconde o botão de cancelar
-    btnCancelarEdicao.hidden = true;
+    // Restaura o texto do botão
+    btnPrincipal.textContent = textoBotaoOriginal;
 }
+
+
+//
+// FASE 8: VALIDAÇÃO E ENVIO DO FORMULÁRIO
+//
 
 formProduto.addEventListener("submit", function(event) {
 
     // Impede o recarregamento da página
     event.preventDefault();
 
-    const nome = nomeInput.value.trim();
 
-    if (nome === "") {
-        alert("Digite o nome do produto.");
-        nomeInput.focus();
+    // SANITIZAÇÃO COM TRIM()
+
+    const nome = nomeEl.value.trim();
+
+    const preco = Number(precoEl.value);
+
+    const quantidade = Number(quantidadeEl.value);
+
+
+    // GUARD CLAUSE: VALIDAÇÃO DO NOME
+
+    if (!nome) {
+
+        alert("Por favor, informe um nome válido para o produto.");
+
+        nomeEl.focus();
+
         return;
     }
 
-    const precoTexto = precoInput.value.trim();
-    const preco = Number(precoTexto);
+
+    // GUARD CLAUSE: VALIDAÇÃO DO PREÇO E QUANTIDADE
 
     if (
-        precoTexto === "" ||
+        precoEl.value.trim() === "" ||
         !Number.isFinite(preco) ||
-        preco <= 0
-    ) {
-        alert("O preço deve ser um número maior que zero.");
-        precoInput.focus();
-        return;
-    }
-
-    const quantidadeTexto = quantidadeInput.value.trim();
-    const quantidade = Number(quantidadeTexto);
-
-    if (
-        quantidadeTexto === "" ||
-        !Number.isSafeInteger(quantidade) ||
+        preco <= 0 ||
+        quantidadeEl.value.trim() === "" ||
+        !Number.isInteger(quantidade) ||
         quantidade <= 0
     ) {
-        alert(
-            "A quantidade deve ser um número inteiro maior que zero."
-        );
-        quantidadeInput.focus();
+
+        alert("O preço e a quantidade devem ser valores numéricos maiores que zero. A quantidade deve ser inteira.");
+
         return;
     }
+
 
     try {
 
-        // Cria o objeto com os dados validados
+        // Cria o produto somente depois das validações
         const novoProduto = new Produto(
             nome,
             preco,
             quantidade
         );
 
-        // -----------------------------
-        // MODO DE EDIÇÃO OU INCLUSÃO
-        // -----------------------------
+
+        // LÓGICA DE INCLUSÃO OU EDIÇÃO
 
         if (indiceEdicao === null) {
 
-            // Modo de inclusão: adiciona um novo produto
+            // MODO INCLUSÃO
+            // Adiciona um novo produto
             listaDeProdutos.push(novoProduto);
 
         } else {
 
-            // Modo de edição: substitui o produto existente
+            // MODO EDIÇÃO
+            // Verifica se o produto ainda existe
             if (!listaDeProdutos[indiceEdicao]) {
-                throw new Error(
-                    "O produto que você está editando não foi encontrado."
-                );
+
+                alert("O produto selecionado não foi encontrado.");
+
+                cancelarEdicao();
+
+                return;
             }
 
+            // Substitui o produto antigo pelo atualizado
             listaDeProdutos[indiceEdicao] = novoProduto;
         }
 
-        // Salva os dados atualizados
+
+        // SALVA NO LOCALSTORAGE
         salvarNoLocalStorage();
 
-        // Atualiza tabela e total
+
+        // ATUALIZA A INTERFACE
         atualizarInterface();
 
-        // Restaura o formulário para o modo de cadastro
-        restaurarModoCadastro();
+
+        // RESTAURA O ESTADO
+        cancelarEdicao();
 
     } catch (erro) {
 
         alert(erro.message);
     }
-});
-
-btnCancelarEdicao.addEventListener("click", function() {
-
-    restaurarModoCadastro();
 
 });
+
+
+//
+// FASE 9: REMOVER UM PRODUTO
+//
 
 function removerProduto(index) {
 
     if (!listaDeProdutos[index]) {
+        alert("Produto não encontrado.");
         return;
     }
 
-    // Se estiver editando o produto que será removido,
-    // cancela a edição antes de removê-lo.
+    // Se o produto removido estiver sendo editado,
+    // cancela o modo edição
     if (indiceEdicao === index) {
 
-        restaurarModoCadastro();
+        cancelarEdicao();
 
     } else if (indiceEdicao !== null && indiceEdicao > index) {
 
-        // Ajusta o índice se um item anterior for removido
+        // Ajusta o índice caso um produto anterior seja removido
         indiceEdicao--;
     }
 
     // Remove o produto
     listaDeProdutos.splice(index, 1);
 
-    // Salva a lista atualizada
+    // Salva e atualiza
     salvarNoLocalStorage();
 
-    // Atualiza a tela
     atualizarInterface();
 }
 
+
+//
+// FASE 10: LIMPAR TODOS OS PRODUTOS
+//
+
 btnLimparTudo.addEventListener("click", function() {
 
-    if (listaDeProdutos.length === 0) {
-        alert("Não existem produtos para remover.");
-        return;
-    }
-
     const confirmar = confirm(
-        "Tem certeza de que deseja excluir todos os produtos?"
+        "Tem certeza que deseja remover todos os produtos?"
     );
 
     if (!confirmar) {
@@ -315,35 +364,48 @@ btnLimparTudo.addEventListener("click", function() {
     // Esvazia a lista
     listaDeProdutos.length = 0;
 
-    // Apaga os dados armazenados
+    // Cancela qualquer edição
+    cancelarEdicao();
+
+    // Apaga os dados salvos
     localStorage.removeItem(CHAVE_STORAGE);
 
-    // Restaura o formulário, caso estivesse editando
-    restaurarModoCadastro();
-
-    // Atualiza a interface
+    // Atualiza a tela
     atualizarInterface();
 });
+
+
+//
+// FASE 11: CALCULAR TOTAL DO ESTOQUE
+//
 
 function atualizarTotalEstoque() {
 
     const valorTotal = listaDeProdutos.reduce(
         (acumulador, produto) => {
+
             return acumulador + produto.calcularSubtotal();
+
         },
         0
     );
 
-    // Formata o valor como moeda brasileira
-    const valorFormatado = valorTotal.toLocaleString("pt-BR", {
-        style: "currency",
-        currency: "BRL"
-    });
+    const valorFormatado = valorTotal.toLocaleString(
+        "pt-BR",
+        {
+            style: "currency",
+            currency: "BRL"
+        }
+    );
 
     totalEstoqueEl.textContent =
-        `Total em estoque: ${valorFormatado}`;
+        `Total em Estoque: ${valorFormatado}`;
 }
 
+
+//
+// FASE 12: RENDERIZAR TABELA
+//
 
 function renderizarTabela() {
 
@@ -351,90 +413,116 @@ function renderizarTabela() {
         "#tabela-produtos tbody"
     );
 
-    // Limpa as linhas anteriores
+    // Limpa a tabela
     tabelaBody.innerHTML = "";
 
-    // Percorre todos os produtos
+    // Percorre os produtos
     listaDeProdutos.forEach((produto, index) => {
 
         const linha = document.createElement("tr");
 
-        // Cria as células de forma segura
-        // usando textContent para exibir os dados.
+
+        // Cria as células
         const celulaNome = document.createElement("td");
+        const celulaPreco = document.createElement("td");
+        const celulaQuantidade = document.createElement("td");
+        const celulaSubtotal = document.createElement("td");
+        const celulaAcoes = document.createElement("td");
+
+
+        // Preenche os dados
         celulaNome.textContent = produto.nome;
 
-        const celulaPreco = document.createElement("td");
-        celulaPreco.textContent = produto.preco.toLocaleString(
-            "pt-BR",
-            {
+        celulaPreco.textContent =
+            produto.preco.toLocaleString("pt-BR", {
                 style: "currency",
                 currency: "BRL"
-            }
-        );
+            });
 
-        const celulaQuantidade = document.createElement("td");
         celulaQuantidade.textContent = produto.quantidade;
 
-        const celulaSubtotal = document.createElement("td");
         celulaSubtotal.textContent =
             produto.calcularSubtotal().toLocaleString("pt-BR", {
                 style: "currency",
                 currency: "BRL"
             });
 
-        const celulaAcoes = document.createElement("td");
-        celulaAcoes.classList.add("acoes");
 
-        // Botão Editar
+        // BOTÃO EDITAR
         const btnEditar = document.createElement("button");
 
-        btnEditar.type = "button";
         btnEditar.textContent = "Editar";
+
         btnEditar.classList.add("btn-editar");
 
         btnEditar.addEventListener("click", function() {
+
             prepararEdicao(index);
+
         });
 
-        // Botão Remover
+
+        // BOTÃO REMOVER
         const btnRemover = document.createElement("button");
 
-        btnRemover.type = "button";
         btnRemover.textContent = "Remover";
+
         btnRemover.classList.add("btn-remover");
 
         btnRemover.addEventListener("click", function() {
+
             removerProduto(index);
+
         });
 
-        // Adiciona os botões à célula de ações
+
+        // Adiciona os botões à célula
         celulaAcoes.appendChild(btnEditar);
+
         celulaAcoes.appendChild(btnRemover);
 
-        // Adiciona as células à linha
+        celulaAcoes.classList.add("acoes");
+
+
+        // Monta a linha
         linha.appendChild(celulaNome);
+
         linha.appendChild(celulaPreco);
+
         linha.appendChild(celulaQuantidade);
+
         linha.appendChild(celulaSubtotal);
+
         linha.appendChild(celulaAcoes);
 
-        // Adiciona a linha à tabela
-        tabelaBody.appendChild(linha);
-    });
 
-    // Mostra uma mensagem quando não há produtos
-    mensagemVazia.hidden = listaDeProdutos.length > 0;
+        // Adiciona à tabela
+        tabelaBody.appendChild(linha);
+
+    });
 }
+
+
+//
+// FASE 13: ATUALIZAR A INTERFACE
+//
+
 function atualizarInterface() {
 
+    // Atualiza a tabela
     renderizarTabela();
 
+    // Atualiza o total
     atualizarTotalEstoque();
 }
 
-// Primeiro, carrega os produtos salvos
+
+//
+// FASE 14: INICIAR O SISTEMA
+//
+
+// Carrega os produtos salvos
 carregarDoLocalStorage();
 
-// Depois, exibe os produtos na tela
+// Mostra os produtos na tela
 atualizarInterface();
